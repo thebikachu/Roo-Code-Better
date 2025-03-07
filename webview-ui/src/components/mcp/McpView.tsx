@@ -14,6 +14,7 @@ import McpToolRow from "./McpToolRow"
 import McpResourceRow from "./McpResourceRow"
 import McpEnabledToggle from "./McpEnabledToggle"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog"
+import React from "react"
 
 type McpViewProps = {
 	onDone: () => void
@@ -140,7 +141,7 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 	}
 
 	const handleRowClick = () => {
-		if (!server.error) {
+		if (server.status === "connected") {
 			setIsExpanded(!isExpanded)
 		}
 	}
@@ -264,33 +265,7 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 				/>
 			</div>
 
-			{server.error ? (
-				<div
-					style={{
-						fontSize: "13px",
-						background: "var(--vscode-textCodeBlock-background)",
-						borderRadius: "0 0 4px 4px",
-						width: "100%",
-					}}>
-					<div
-						style={{
-							color: "var(--vscode-testing-iconFailed)",
-							marginBottom: "8px",
-							padding: "0 10px",
-							overflowWrap: "break-word",
-							wordBreak: "break-word",
-						}}>
-						{server.error}
-					</div>
-					<VSCodeButton
-						appearance="secondary"
-						onClick={handleRestart}
-						disabled={server.status === "connecting"}
-						style={{ width: "calc(100% - 20px)", margin: "0 10px 10px 10px" }}>
-						{server.status === "connecting" ? "Retrying..." : "Retry Connection"}
-					</VSCodeButton>
-				</div>
-			) : (
+			{server.status === "connected" ? (
 				isExpanded && (
 					<div
 						style={{
@@ -389,6 +364,38 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 						</div>
 					</div>
 				)
+			) : (
+				<div
+					style={{
+						fontSize: "13px",
+						background: "var(--vscode-textCodeBlock-background)",
+						borderRadius: "0 0 4px 4px",
+						width: "100%",
+					}}>
+					<div
+						style={{
+							color: "var(--vscode-testing-iconFailed)",
+							marginBottom: "8px",
+							padding: "0 10px",
+							overflowWrap: "break-word",
+							wordBreak: "break-word",
+						}}>
+						{server.error &&
+							server.error.split("\n").map((item, index) => (
+								<React.Fragment key={index}>
+									{index > 0 && <br />}
+									{item}
+								</React.Fragment>
+							))}
+					</div>
+					<VSCodeButton
+						appearance="secondary"
+						onClick={handleRestart}
+						disabled={server.status === "connecting"}
+						style={{ width: "calc(100% - 20px)", margin: "0 10px 10px 10px" }}>
+						{server.status === "connecting" ? "Retrying..." : "Retry Connection"}
+					</VSCodeButton>
+				</div>
 			)}
 
 			{/* Delete Confirmation Dialog */}
