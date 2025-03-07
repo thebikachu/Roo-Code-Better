@@ -179,12 +179,12 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 					alignItems: "center",
 					padding: "8px",
 					background: "var(--vscode-textCodeBlock-background)",
-					cursor: server.error ? "default" : "pointer",
-					borderRadius: isExpanded || server.error ? "4px 4px 0 0" : "4px",
+					cursor: server.status === "connected" ? "pointer" : "default",
+					borderRadius: isExpanded || server.status === "connected" ? "4px" : "4px 4px 0 0",
 					opacity: server.disabled ? 0.6 : 1,
 				}}
 				onClick={handleRowClick}>
-				{!server.error && (
+				{server.status === "connected" && (
 					<span
 						className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`}
 						style={{ marginRight: "8px" }}
