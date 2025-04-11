@@ -1,8 +1,14 @@
 # Roo Code Changelog
 
-## [3.11.13]
+## [3.11.13] - 2025-04-11
 
-- v3.11.13
+- Loads of terminal improvements: command delay, PowerShell counter, and ZSH EOL mark (thanks @KJ7LNW!)
+- Add file context tracking system (thanks @samhvw8 and @canvrno!)
+- Improved display of diff errors + easy copying for investigation
+- Fixes to .vscodeignore (thanks @franekp!)
+- Fix a zh-CN translation for model capabilities (thanks @zhangtony239!)
+- Rename AWS Bedrock to Amazon Bedrock (thanks @ronyblum!)
+- Update extension title and description (thanks @StevenTCramer!)
 
 ## [3.11.12] - 2025-04-09
 
