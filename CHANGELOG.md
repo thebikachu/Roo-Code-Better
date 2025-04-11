@@ -1,5 +1,11 @@
 # Roo Code Changelog
 
+## 3.11.13
+
+### Patch Changes
+
+- v3.11.13
+
 ## [3.11.12] - 2025-04-09
 
 - Make Grok3 streaming work with OpenAI Compatible (thanks @amittell!)
