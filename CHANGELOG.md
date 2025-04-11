@@ -1,8 +1,6 @@
 # Roo Code Changelog
 
-## 3.11.13
-
-### Patch Changes
+## [3.11.13]
 
 - v3.11.13
 
