@@ -1,8 +1,6 @@
 # Roo Code Changelog
 
-## 3.11.14
-
-### Patch Changes
+## [3.11.14]
 
 - Fix bug not to respect symbolic linked rules, if target is a directory or another symbolic link
 - Respect the setting to always read the full file
