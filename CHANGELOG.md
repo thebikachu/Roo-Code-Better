@@ -1,5 +1,12 @@
 # Roo Code Changelog
 
+## 3.11.14
+
+### Patch Changes
+
+- Fix bug not to respect symbolic linked rules, if target is a directory or another symbolic link
+- Respect the setting to always read the full file
+
 ## [3.11.13] - 2025-04-11
 
 - Loads of terminal improvements: command delay, PowerShell counter, and ZSH EOL mark (thanks @KJ7LNW!)
