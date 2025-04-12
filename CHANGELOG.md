@@ -1,9 +1,9 @@
 # Roo Code Changelog
 
-## [3.11.14]
+## [3.11.14] - 2025-04-11
 
-- Fix bug not to respect symbolic linked rules, if target is a directory or another symbolic link
-- Respect the setting to always read the full file
+- Support symbolic links in rules folders to directories and other symbolic links (thanks @taisukeoe!)
+- Stronger enforcement of the setting to always read full files instead of doing partial reads
 
 ## [3.11.13] - 2025-04-11
 
