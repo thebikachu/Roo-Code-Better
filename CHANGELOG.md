@@ -1,11 +1,9 @@
 # Roo Code Changelog
 
-## 3.11.16
+## [3.11.16] - 2025-04-14
 
-### Patch Changes
-
-- v3.11.16
-- Add gpt 4.1
+- Add gpt-4.1, gpt-4.1-mini, and gpt-4.1-nano to the OpenAI provider
+- Include model ID in environment details and when exporting tasks (thanks @feifei325!)
 
 ## [3.11.15] - 2025-04-13
 
