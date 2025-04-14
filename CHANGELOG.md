@@ -1,5 +1,11 @@
 # Roo Code Changelog
 
+## 3.11.15
+
+### Patch Changes
+
+- v3.11.15
+
 ## [3.11.14] - 2025-04-11
 
 - Support symbolic links in rules folders to directories and other symbolic links (thanks @taisukeoe!)
