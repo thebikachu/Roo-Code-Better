@@ -1,5 +1,12 @@
 # Roo Code Changelog
 
+## 3.11.16
+
+### Patch Changes
+
+- v3.11.16
+- Add gpt 4.1
+
 ## [3.11.15] - 2025-04-13
 
 - Add ability to filter task history by workspace (thanks @samhvw8!)
