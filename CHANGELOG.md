@@ -1,8 +1,8 @@
 # Roo Code Changelog
 
-## [3.12.1]
+## [3.12.1] - 2025-04-16
 
-- Fix select dropdown styling
+- Bugfix to Edit button visibility in the select dropdowns
 
 ## [3.12.0] - 2025-04-15
 
