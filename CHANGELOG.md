@@ -1,8 +1,6 @@
 # Roo Code Changelog
 
-## 3.12.1
-
-### Patch Changes
+## [3.12.1]
 
 - Fix select dropdown styling
 
