@@ -2,7 +2,7 @@
 
 ## [3.12.0] - 2025-04-15
 
-- Add xAI provider and expose reasoning effort options for Grok on OpenRouter
+- Add xAI provider and expose reasoning effort options for Grok on OpenRouter (thanks Cline!)
 - Make diff editing config per-profile and improve pre-diff string normalization
 - Make checkpoints faster and more reliable
 - Add a search bar to mode and profile select dropdowns (thanks @samhvw8!)
