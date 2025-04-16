@@ -1,12 +1,10 @@
 # Roo Code Changelog
 
-## 3.12.2
+## [3.12.2] - 2025-04-16
 
-### Patch Changes
-
-- Add consecutive mistake count to diff error telemetry
-- v3.12.2
-- Add OpenAI o3 & 4o-mini
+- Add OpenAI o3 & 4o-mini (thanks @PeterDaveHello!)
+- Improve file/folder context mention UI (thanks @elianiva!)
+- Improve diff error telemetry
 
 ## [3.12.1] - 2025-04-16
 
