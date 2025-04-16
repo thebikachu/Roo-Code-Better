@@ -1,5 +1,11 @@
 # Roo Code Changelog
 
+## 3.12.1
+
+### Patch Changes
+
+- Fix select dropdown styling
+
 ## [3.12.0] - 2025-04-15
 
 - Add xAI provider and expose reasoning effort options for Grok on OpenRouter (thanks Cline!)
