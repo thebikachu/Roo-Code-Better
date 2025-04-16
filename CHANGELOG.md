@@ -1,5 +1,13 @@
 # Roo Code Changelog
 
+## 3.12.2
+
+### Patch Changes
+
+- Add consecutive mistake count to diff error telemetry
+- v3.12.2
+- Add OpenAI o3 & 4o-mini
+
 ## [3.12.1] - 2025-04-16
 
 - Bugfix to Edit button visibility in the select dropdowns
