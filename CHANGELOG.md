@@ -1,5 +1,11 @@
 # Roo Code Changelog
 
+## 3.11.18
+
+### Patch Changes
+
+- v3.12.0
+
 ## [3.11.17] - 2025-04-14
 
 - Improvements to OpenAI cache reporting and cost estimates (thanks @monotykamary and Cline!)
