@@ -7,6 +7,7 @@
 - Support Gemini 2.5 Flash thinking mode (thanks @monotykamary)
 - Make auto-approval toggle on/off states more obvious (thanks @sachasayan)
 - Add telemetry for shell integration errors
+- Fix the path of files dragging into the chat textarea on Windows (thanks @NyxJae)
 
 ## [3.13.0] - 2025-04-17
 
