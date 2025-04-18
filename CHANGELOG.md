@@ -1,6 +1,6 @@
 # Roo Code Changelog
 
-## 3.13.1
+## [3.13.1] - 2025-04-18
 
 ### Patch Changes
 
