@@ -2,8 +2,6 @@
 
 ## [3.13.1] - 2025-04-18
 
-### Patch Changes
-
 - Support Gemini 2.5 Flash thinking mode (thanks @monotykamary)
 - Make auto-approval toggle on/off states more obvious (thanks @sachasayan)
 - Add telemetry for shell integration errors
