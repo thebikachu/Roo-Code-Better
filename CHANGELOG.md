@@ -4,9 +4,9 @@
 
 ### Patch Changes
 
-- Move executeCommand out of Cline and add telemetry for shell integration errors
-- Support Gemini 2.5 Flash thinking mode
-- v3.13.1
+- Support Gemini 2.5 Flash thinking mode (thanks @monotykamary)
+- Make auto-approval toggle on/off states more obvious (thanks @sachasayan)
+- Add telemetry for shell integration errors
 
 ## [3.13.0] - 2025-04-17
 
