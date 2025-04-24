@@ -1,20 +1,40 @@
 # Roo Code Changelog
 
-## 3.14.0
+## [3.14.0] - 2025-04-23
 
-### Minor Changes
-
-- v3.14.0
-
-### Patch Changes
-
-- I introduced a new method `processCarriageReturns` in `TerminalProcess.ts` to process carriage returns (\r) in terminal output. This method splits the output into lines, handles each line with carriage returns (\r) by retaining only the content after the last carriage return (\r), and preserves escape sequences to avoid breaking terminal formatting. The method is called within `getUnretrievedOutput` to ensure output is processed before being displayed. Additionally, I added comprehensive test cases in `TerminalProcess.test.ts` under a new `describe("processCarriageReturns", ...)` block to validate various scenarios, including basic progress bars, multiple lines with mixed carriage returns (\r) and line feeds (\n), and ANSI escape sequences.
-- Properly hide cache section of task header
-- Fix task size cache TTL
-- Use formatLargeNumber on token counts in task header
-- 13.3.3
-- Package material icons in vsix
-- Throttle calls to calculate task folder size
+- Add prompt caching to the Gemini provider
+- Improve the search_and_replace and insert_content tools and bring them out of experimental, and deprecate append_to_file (thanks @samhvw8!)
+- Use material icons for files and folders in mentions (thanks @elianiva!)
+- Make the list_files tool more efficient and smarter about excluding directories like .git/
+- Fix file drag and drop on Windows and when using SSH tunnels (thanks @NyxJae!)
+- Correctly revert changes and suggest alternative tools when write_to_file fails on a missing line count
+- Allow interpolation of `workspace`, `mode`,  `language`, `shell`, and `operatingSystem` into custom system prompt overrides (thanks @daniel-lxs!)
+- Fix interpolation bug in the “add to context” code action (thanks @elianiva!)
+- Preserve editor state and prevent tab unpinning during diffs (thanks @seedlord!)
+- Improvements to icon rendering on Linux (thanks @elianiva!)
+- Improvements to Requesty model list fetching (thanks @dtrugman!)
+- Fix user feedback not being added to conversation history in API error state, redundant ‘TASK RESUMPTION’ prompts, and error messages not showing after cancelling API requests (thanks @System233!)
+- Track tool use errors in evals
+- Fix MCP hub error when dragging extension to another sidebar
+- Improve display of long MCP tool arguments
+- Fix redundant ‘TASK RESUMPTION’ prompts (thanks @System233!)
+- Fix bug opening files when editor has no workspace root
+- Make the VS Code LM provider show the correct model information (thanks @QuinsZouls!)
+- Fixes to make the focusInput command more reliable (thanks @hongzio!)
+- Better handling of aftercursor content in context mentions (thanks @elianiva!)
+- Support injecting environment variables in MCP config (thanks @NamesMT!)
+- Better handling of FakeAI “controller” object (thanks @wkordalski)
+- Remove unnecessary calculation from VS Code LM provider (thanks @d-oit!)
+- Allow Amazon Bedrock Marketplace ARNs (thanks @mlopezr!)
+- Give better loading feedback on chat rows (thanks @elianiva!)
+- Performance improvements to task size calculations
+- Don’t immediately show a model ID error when changing API providers
+- Fix apply_diff edge cases
+- Use a more sensible task export icon
+- Use path aliases in webview source files
+- Display a warning when the system prompt is overridden
+- Better progress indicator for apply_diff tools (thanks @qdaxb!)
+- Fix terminal carriage return handling for correct progress bar display (thanks @Yikai-Liao!)
 
 ## [3.13.2] - 2025-04-18
 
