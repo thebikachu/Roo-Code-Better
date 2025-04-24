@@ -2,7 +2,7 @@
 
 ## [3.14.0] - 2025-04-23
 
-- Add prompt caching to the Gemini provider
+- Add prompt caching for `gemini-2.5-pro-preview-03-25` in the Gemini provider (Vertex and OpenRouter coming soon!)
 - Improve the search_and_replace and insert_content tools and bring them out of experimental, and deprecate append_to_file (thanks @samhvw8!)
 - Use material icons for files and folders in mentions (thanks @elianiva!)
 - Make the list_files tool more efficient and smarter about excluding directories like .git/
