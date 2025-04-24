@@ -1,5 +1,21 @@
 # Roo Code Changelog
 
+## 3.14.0
+
+### Minor Changes
+
+- v3.14.0
+
+### Patch Changes
+
+- I introduced a new method `processCarriageReturns` in `TerminalProcess.ts` to process carriage returns (\r) in terminal output. This method splits the output into lines, handles each line with carriage returns (\r) by retaining only the content after the last carriage return (\r), and preserves escape sequences to avoid breaking terminal formatting. The method is called within `getUnretrievedOutput` to ensure output is processed before being displayed. Additionally, I added comprehensive test cases in `TerminalProcess.test.ts` under a new `describe("processCarriageReturns", ...)` block to validate various scenarios, including basic progress bars, multiple lines with mixed carriage returns (\r) and line feeds (\n), and ANSI escape sequences.
+- Properly hide cache section of task header
+- Fix task size cache TTL
+- Use formatLargeNumber on token counts in task header
+- 13.3.3
+- Package material icons in vsix
+- Throttle calls to calculate task folder size
+
 ## [3.13.2] - 2025-04-18
 
 - Allow custom URLs for Gemini provider
