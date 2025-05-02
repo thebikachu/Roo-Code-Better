@@ -4,7 +4,7 @@
 
 - Fix terminal performance issues
 - Handle Mermaid validation errors
-- Add customizable headers for OpenAI-compatible provider
+- Add customizable headers for OpenAI-compatible provider (thanks @mark-bradshaw!)
 - Add config option to overwrite OpenAI's API base (thanks @GOODBOY008!)
 - Fixes to padding and height issues when resizing the sidebar (thanks @zhangtony239!)
 - Remove tool groups from orchestrator mode definition
