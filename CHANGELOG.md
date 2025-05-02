@@ -1,11 +1,14 @@
 # Roo Code Changelog
 
-## 3.15.2
+## [3.15.2] - 2025-05-02
 
-### Patch Changes
-
-- Design Engineer Roomode
--   - Fix terminal performance issues
+- Fix terminal performance issues
+- Handle Mermaid validation errors and copy both error message and content
+- Add customizable headers for OpenAI-compatible provider
+- Add config option to overwrite OpenAI's API base (thanks @GOODBOY008!)
+- Fixes to padding and height issues when resizing the sidebar (thanks @zhangtony239!)
+- Remove tool groups from orchestrator mode definition
+- Add telemetry for title button clicks
 
 ## [3.15.1] - 2025-04-30
 
