@@ -1,5 +1,12 @@
 # Roo Code Changelog
 
+## 3.15.2
+
+### Patch Changes
+
+- Design Engineer Roomode
+-   - Fix terminal performance issues
+
 ## [3.15.1] - 2025-04-30
 
 - Capture stderr in execa-spawned processes
