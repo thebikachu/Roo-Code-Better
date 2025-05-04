@@ -1,10 +1,8 @@
 # Roo Code Changelog
 
-## 3.15.4
+## [3.15.4] - 2025-05-04
 
-### Patch Changes
-
-- Fix auto-approvals
+- Fix a nasty bug that would cause Roo Code to hang, particularly in orchestrator mode
 - Improve Gemini caching efficiency
 
 ## [3.15.3] - 2025-05-02
