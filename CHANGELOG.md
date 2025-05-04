@@ -1,5 +1,12 @@
 # Roo Code Changelog
 
+## 3.15.4
+
+### Patch Changes
+
+- Fix auto-approvals
+- Improve Gemini caching efficiency
+
 ## [3.15.3] - 2025-05-02
 
 - Terminal: Fix empty command bug
