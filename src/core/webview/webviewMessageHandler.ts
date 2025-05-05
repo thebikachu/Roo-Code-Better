@@ -6,7 +6,7 @@ import * as vscode from "vscode"
 import { ClineProvider } from "./ClineProvider"
 import { Language, ApiConfigMeta } from "../../schemas"
 import { changeLanguage, t } from "../../i18n"
-import { ApiConfiguration } from "../../shared/api"
+import { ApiConfiguration, RouterName, toRouterName } from "../../shared/api"
 import { supportPrompt } from "../../shared/support-prompt"
 
 import { checkoutDiffPayloadSchema, checkoutRestorePayloadSchema, WebviewMessage } from "../../shared/WebviewMessage"
@@ -34,7 +34,7 @@ import { TelemetrySetting } from "../../shared/TelemetrySetting"
 import { getWorkspacePath } from "../../utils/path"
 import { Mode, defaultModeSlug } from "../../shared/modes"
 import { GlobalState } from "../../schemas"
-import { getModels } from "../../api/providers/fetchers/cache"
+import { getModels, flushModels } from "../../api/providers/fetchers/cache"
 import { generateSystemPrompt } from "./generateSystemPrompt"
 
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
@@ -281,6 +281,10 @@ export const webviewMessageHandler = async (provider: ClineProvider, message: We
 			break
 		case "resetState":
 			await provider.resetState()
+			break
+		case "flushRouterModels":
+			const routerName: RouterName = toRouterName(message.text)
+			await flushModels(routerName)
 			break
 		case "requestRouterModels":
 			const { apiConfiguration } = await provider.getState()

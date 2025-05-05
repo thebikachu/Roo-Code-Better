@@ -80,3 +80,11 @@ export const getModels = async (router: RouterName, apiKey: string | undefined =
 
 	return models ?? {}
 }
+
+/**
+ * Flush models memory cache for a specific router
+ * @param router - The router to flush models for.
+ */
+export const flushModels = async (router: RouterName) => {
+	memoryCache.del(router)
+}

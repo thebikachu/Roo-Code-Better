@@ -1701,6 +1701,13 @@ export type RouterName = (typeof routerNames)[number]
 
 export const isRouterName = (value: string): value is RouterName => routerNames.includes(value as RouterName)
 
+export function toRouterName(value?: string): RouterName {
+	if (value && isRouterName(value)) {
+		return value
+	}
+	throw new Error(`Invalid router name: ${value}`)
+}
+
 export type ModelRecord = Record<string, ModelInfo>
 
 export type RouterModels = Record<RouterName, ModelRecord>
