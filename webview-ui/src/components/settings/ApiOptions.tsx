@@ -37,7 +37,7 @@ import {
 	OPENROUTER_DEFAULT_PROVIDER_NAME,
 } from "@src/components/ui/hooks/useOpenRouterModelProviders"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button } from "@src/components/ui"
-import { getRequestyAuthUrl, getOpenRouterAuthUrl, getGlamaAuthUrl } from "@src/oauth/urls"
+import { getRequestyApiKeyUrl, getOpenRouterAuthUrl, getGlamaAuthUrl } from "@src/oauth/urls"
 
 import { VSCodeButtonLink } from "../common/VSCodeButtonLink"
 
@@ -570,10 +570,7 @@ const ApiOptions = ({
 						{t("settings:providers.apiKeyStorageNotice")}
 					</div>
 					{!apiConfiguration?.requestyApiKey && (
-						<VSCodeButtonLink
-							href={getRequestyAuthUrl(uriScheme)}
-							style={{ width: "100%" }}
-							appearance="primary">
+						<VSCodeButtonLink href={getRequestyApiKeyUrl()} style={{ width: "100%" }} appearance="primary">
 							{t("settings:providers.getRequestyApiKey")}
 						</VSCodeButtonLink>
 					)}

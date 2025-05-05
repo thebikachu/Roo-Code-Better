@@ -107,7 +107,7 @@
 		"awsCustomArnDesc": "Certifique-se de que a região no ARN corresponde à região AWS selecionada acima.",
 		"openRouterApiKey": "Chave de API OpenRouter",
 		"flushModelsCache": "Limpar cache de modelos",
-		"flushedModelsCache": "Cache limpa, por favor reabra a visualização de configurações",
+		"flushedModelsCache": "Cache limpo, por favor reabra a visualização de configurações",
 		"getOpenRouterApiKey": "Obter chave de API OpenRouter",
 		"apiKeyStorageNotice": "As chaves de API são armazenadas com segurança no Armazenamento Secreto do VSCode",
 		"glamaApiKey": "Chave de API Glama",
