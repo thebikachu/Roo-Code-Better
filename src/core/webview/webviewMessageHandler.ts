@@ -283,11 +283,13 @@ export const webviewMessageHandler = async (provider: ClineProvider, message: We
 			await provider.resetState()
 			break
 		case "requestRouterModels":
+			const { apiConfiguration } = await provider.getState()
+
 			const [openRouterModels, requestyModels, glamaModels, unboundModels] = await Promise.all([
-				getModels("openrouter"),
-				getModels("requesty"),
-				getModels("glama"),
-				getModels("unbound"),
+				getModels("openrouter", apiConfiguration.openRouterApiKey),
+				getModels("requesty", apiConfiguration.requestyApiKey),
+				getModels("glama", apiConfiguration.glamaApiKey),
+				getModels("unbound", apiConfiguration.unboundApiKey),
 			])
 
 			provider.postMessageToWebview({
