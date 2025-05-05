@@ -85,6 +85,8 @@ const ApiOptions = ({
 		return Object.entries(headers)
 	})
 
+	const [requestyShowRefreshHint, setRequestyShowRefreshHint] = useState<boolean>()
+
 	useEffect(() => {
 		const propHeaders = apiConfiguration?.openAiHeaders || {}
 
@@ -190,7 +192,7 @@ const ApiOptions = ({
 		info: selectedModelInfo,
 	} = useSelectedModel(apiConfiguration)
 
-	const { data: routerModels } = useRouterModels()
+	const { data: routerModels, refetch: refetchRouterModels } = useRouterModels()
 
 	// Update apiConfiguration.aiModelId whenever selectedModelId changes.
 	useEffect(() => {
@@ -574,6 +576,24 @@ const ApiOptions = ({
 							appearance="primary">
 							{t("settings:providers.getRequestyApiKey")}
 						</VSCodeButtonLink>
+					)}
+					<Button
+						variant="outline"
+						title={t("settings:providers.refetchModels")}
+						onClick={() => {
+							vscode.postMessage({ type: "flushRouterModels", text: "requesty" })
+							refetchRouterModels()
+							setRequestyShowRefreshHint(true)
+						}}>
+						<div className="flex items-center gap-2">
+							<span className="codicon codicon-refresh" />
+							{t("settings:providers.flushModelsCache")}
+						</div>
+					</Button>
+					{requestyShowRefreshHint && (
+						<div className="flex items-center text-vscode-errorForeground">
+							{t("settings:providers.flushedModelsCache")}
+						</div>
 					)}
 				</>
 			)}
