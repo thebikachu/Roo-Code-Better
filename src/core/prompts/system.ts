@@ -3,16 +3,17 @@ import {
 	modes,
 	CustomModePrompts,
 	PromptComponent,
-	getRoleDefinition,
 	defaultModeSlug,
 	ModeConfig,
 	getModeBySlug,
 	getGroupName,
 } from "../../shared/modes"
-import { DiffStrategy } from "../diff/DiffStrategy"
+import { PromptVariables } from "./sections/custom-system-prompt"
+import { DiffStrategy } from "../../shared/tools"
 import { McpHub } from "../../services/mcp/McpHub"
 import { getToolDescriptionsForMode } from "./tools"
 import * as vscode from "vscode"
+import * as os from "os"
 import {
 	getRulesSection,
 	getSystemInfoSection,
@@ -23,10 +24,10 @@ import {
 	getCapabilitiesSection,
 	getModesSection,
 	addCustomInstructions,
+	markdownFormattingSection,
 } from "./sections"
 import { loadSystemPromptFile } from "./sections/custom-system-prompt"
-import fs from "fs/promises"
-import path from "path"
+import { formatLanguage } from "../../shared/language"
 
 async function generatePrompt(
 	context: vscode.ExtensionContext,
@@ -39,10 +40,11 @@ async function generatePrompt(
 	promptComponent?: PromptComponent,
 	customModeConfigs?: ModeConfig[],
 	globalCustomInstructions?: string,
-	preferredLanguage?: string,
 	diffEnabled?: boolean,
 	experiments?: Record<string, boolean>,
 	enableMcpServerCreation?: boolean,
+	language?: string,
+	rooIgnoreInstructions?: string,
 ): Promise<string> {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -63,6 +65,8 @@ async function generatePrompt(
 	])
 
 	const basePrompt = `${roleDefinition}
+
+${markdownFormattingSection()}
 
 ${getSharedToolUseSection()}
 
@@ -85,13 +89,13 @@ ${getCapabilitiesSection(cwd, supportsComputerUse, mcpHub, effectiveDiffStrategy
 
 ${modesSection}
 
-${getRulesSection(cwd, supportsComputerUse, effectiveDiffStrategy, experiments)}
+${getRulesSection(cwd, supportsComputerUse, effectiveDiffStrategy)}
 
-${getSystemInfoSection(cwd, mode, customModeConfigs)}
+${getSystemInfoSection(cwd)}
 
 ${getObjectiveSection()}
 
-${await addCustomInstructions(promptComponent?.customInstructions || modeConfig.customInstructions || "", globalCustomInstructions || "", cwd, mode, { preferredLanguage })}`
+${await addCustomInstructions(promptComponent?.customInstructions || modeConfig.customInstructions || "", globalCustomInstructions || "", cwd, mode, { language: language ?? formatLanguage(vscode.env.language), rooIgnoreInstructions })}`
 
 	return basePrompt
 }
@@ -107,10 +111,11 @@ export const SYSTEM_PROMPT = async (
 	customModePrompts?: CustomModePrompts,
 	customModes?: ModeConfig[],
 	globalCustomInstructions?: string,
-	preferredLanguage?: string,
 	diffEnabled?: boolean,
 	experiments?: Record<string, boolean>,
 	enableMcpServerCreation?: boolean,
+	language?: string,
+	rooIgnoreInstructions?: string,
 ): Promise<string> => {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -124,7 +129,14 @@ export const SYSTEM_PROMPT = async (
 	}
 
 	// Try to load custom system prompt from file
-	const fileCustomSystemPrompt = await loadSystemPromptFile(cwd, mode)
+	const variablesForPrompt: PromptVariables = {
+		workspace: cwd,
+		mode: mode,
+		language: language ?? formatLanguage(vscode.env.language),
+		shell: vscode.env.shell,
+		operatingSystem: os.type(),
+	}
+	const fileCustomSystemPrompt = await loadSystemPromptFile(cwd, mode, variablesForPrompt)
 
 	// Check if it's a custom mode
 	const promptComponent = getPromptComponent(customModePrompts?.[mode])
@@ -135,11 +147,20 @@ export const SYSTEM_PROMPT = async (
 	// If a file-based custom system prompt exists, use it
 	if (fileCustomSystemPrompt) {
 		const roleDefinition = promptComponent?.roleDefinition || currentMode.roleDefinition
+		const customInstructions = await addCustomInstructions(
+			promptComponent?.customInstructions || currentMode.customInstructions || "",
+			globalCustomInstructions || "",
+			cwd,
+			mode,
+			{ language: language ?? formatLanguage(vscode.env.language), rooIgnoreInstructions },
+		)
+
+		// For file-based prompts, don't include the tool sections
 		return `${roleDefinition}
 
 ${fileCustomSystemPrompt}
 
-${await addCustomInstructions(promptComponent?.customInstructions || currentMode.customInstructions || "", globalCustomInstructions || "", cwd, mode, { preferredLanguage })}`
+${customInstructions}`
 	}
 
 	// If diff is disabled, don't pass the diffStrategy
@@ -156,9 +177,10 @@ ${await addCustomInstructions(promptComponent?.customInstructions || currentMode
 		promptComponent,
 		customModes,
 		globalCustomInstructions,
-		preferredLanguage,
 		diffEnabled,
 		experiments,
 		enableMcpServerCreation,
+		language,
+		rooIgnoreInstructions,
 	)
 }

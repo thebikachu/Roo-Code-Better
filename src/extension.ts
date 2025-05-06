@@ -1,12 +1,32 @@
 import * as vscode from "vscode"
+import * as dotenvx from "@dotenvx/dotenvx"
+import * as path from "path"
 
-import { ClineProvider } from "./core/webview/ClineProvider"
-import { createClineAPI } from "./exports"
+// Load environment variables from .env file
+try {
+	// Specify path to .env file in the project root directory
+	const envPath = path.join(__dirname, "..", ".env")
+	dotenvx.config({ path: envPath })
+} catch (e) {
+	// Silently handle environment loading errors
+	console.warn("Failed to load environment variables:", e)
+}
+
 import "./utils/path" // Necessary to have access to String.prototype.toPosix.
+
+import { initializeI18n } from "./i18n"
+import { ContextProxy } from "./core/config/ContextProxy"
+import { ClineProvider } from "./core/webview/ClineProvider"
 import { CodeActionProvider } from "./core/CodeActionProvider"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
-import { handleUri, registerCommands, registerCodeActions } from "./activate"
 import { McpServerManager } from "./services/mcp/McpServerManager"
+import { telemetryService } from "./services/telemetry/TelemetryService"
+import { TerminalRegistry } from "./integrations/terminal/TerminalRegistry"
+import { API } from "./exports/api"
+import { migrateSettings } from "./utils/migrateSettings"
+
+import { handleUri, registerCommands, registerCodeActions, registerTerminalActions } from "./activate"
+import { formatLanguage } from "./shared/language"
 
 /**
  * Built using https://github.com/microsoft/vscode-webview-ui-toolkit
@@ -21,11 +41,23 @@ let extensionContext: vscode.ExtensionContext
 
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 	extensionContext = context
 	outputChannel = vscode.window.createOutputChannel("Roo-Code")
 	context.subscriptions.push(outputChannel)
 	outputChannel.appendLine("Roo-Code extension activated")
+
+	// Migrate old settings to new
+	await migrateSettings(context, outputChannel)
+
+	// Initialize telemetry service after environment variables are loaded.
+	telemetryService.initialize()
+
+	// Initialize i18n for internationalization support
+	initializeI18n(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
+
+	// Initialize terminal shell execution handlers.
+	TerminalRegistry.initialize()
 
 	// Get default commands from configuration.
 	const defaultCommands = vscode.workspace.getConfiguration("roo-cline").get<string[]>("allowedCommands") || []
@@ -35,15 +67,17 @@ export function activate(context: vscode.ExtensionContext) {
 		context.globalState.update("allowedCommands", defaultCommands)
 	}
 
-	const sidebarProvider = new ClineProvider(context, outputChannel)
+	const contextProxy = await ContextProxy.getInstance(context)
+	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy)
+	telemetryService.setProvider(provider)
 
 	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(ClineProvider.sideBarId, sidebarProvider, {
+		vscode.window.registerWebviewViewProvider(ClineProvider.sideBarId, provider, {
 			webviewOptions: { retainContextWhenHidden: true },
 		}),
 	)
 
-	registerCommands({ context, outputChannel, provider: sidebarProvider })
+	registerCommands({ context, outputChannel, provider })
 
 	/**
 	 * We use the text document content provider API to show the left side for diff
@@ -81,13 +115,24 @@ export function activate(context: vscode.ExtensionContext) {
 	)
 
 	registerCodeActions(context)
+	registerTerminalActions(context)
 
-	return createClineAPI(outputChannel, sidebarProvider)
+	// Allows other extensions to activate once Roo is ready.
+	vscode.commands.executeCommand("roo-cline.activationCompleted")
+
+	// Implements the `RooCodeAPI` interface.
+	const socketPath = process.env.ROO_CODE_IPC_SOCKET_PATH
+	const enableLogging = typeof socketPath === "string"
+	return new API(outputChannel, provider, socketPath, enableLogging)
 }
 
-// This method is called when your extension is deactivated.
+// This method is called when your extension is deactivated
 export async function deactivate() {
 	outputChannel.appendLine("Roo-Code extension deactivated")
 	// Clean up MCP server manager
 	await McpServerManager.cleanup(extensionContext)
+	telemetryService.shutdown()
+
+	// Clean up terminal handlers
+	TerminalRegistry.cleanup()
 }

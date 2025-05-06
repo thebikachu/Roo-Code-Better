@@ -1,51 +1,33 @@
 import * as assert from "assert"
 
+import type { ClineMessage } from "../../../src/exports/roo-code"
+
+import { waitUntilCompleted } from "./utils"
+
 suite("Roo Code Task", () => {
-	test("Should handle prompt and response correctly", async function () {
-		const timeout = 30000
-		const interval = 1000
+	test("Should handle prompt and response correctly", async () => {
+		const api = globalThis.api
 
-		if (!globalThis.extension) {
-			assert.fail("Extension not found")
-		}
+		const messages: ClineMessage[] = []
 
-		// Ensure the webview is launched.
-		let startTime = Date.now()
-
-		while (Date.now() - startTime < timeout) {
-			if (globalThis.provider.viewLaunched) {
-				break
+		api.on("message", ({ message }) => {
+			if (message.type === "say" && message.partial === false) {
+				messages.push(message)
 			}
+		})
 
-			await new Promise((resolve) => setTimeout(resolve, interval))
-		}
+		const taskId = await api.startNewTask({
+			configuration: { mode: "Ask", alwaysAllowModeSwitch: true, autoApprovalEnabled: true },
+			text: "Hello world, what is your name? Respond with 'My name is ...'",
+		})
 
-		await globalThis.provider.updateGlobalState("mode", "Code")
-		await globalThis.provider.updateGlobalState("alwaysAllowModeSwitch", true)
-		await globalThis.provider.updateGlobalState("autoApprovalEnabled", true)
-
-		await globalThis.api.startNewTask("Hello world, what is your name? Respond with 'My name is ...'")
-
-		// Wait for task to appear in history with tokens.
-		startTime = Date.now()
-
-		while (Date.now() - startTime < timeout) {
-			const messages = globalThis.provider.messages
-
-			if (messages.some(({ type, text }) => type === "say" && text?.includes("My name is Roo"))) {
-				break
-			}
-
-			await new Promise((resolve) => setTimeout(resolve, interval))
-		}
-
-		if (globalThis.provider.messages.length === 0) {
-			assert.fail("No messages received")
-		}
+		await waitUntilCompleted({ api, taskId })
 
 		assert.ok(
-			globalThis.provider.messages.some(({ type, text }) => type === "say" && text?.includes("My name is Roo")),
-			"Did not receive expected response containing 'My name is Roo'",
+			!!messages.find(
+				({ say, text }) => (say === "completion_result" || say === "text") && text?.includes("My name is Roo"),
+			),
+			`Completion should include "My name is Roo"`,
 		)
 	})
 })

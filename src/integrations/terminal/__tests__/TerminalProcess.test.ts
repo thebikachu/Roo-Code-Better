@@ -2,13 +2,20 @@
 
 import * as vscode from "vscode"
 
-import { TerminalProcess, mergePromise } from "../TerminalProcess"
-import { TerminalInfo, TerminalRegistry } from "../TerminalRegistry"
+import { mergePromise } from "../mergePromise"
+import { TerminalProcess } from "../TerminalProcess"
+import { Terminal } from "../Terminal"
+import { TerminalRegistry } from "../TerminalRegistry"
 
 // Mock vscode.window.createTerminal
 const mockCreateTerminal = jest.fn()
 
 jest.mock("vscode", () => ({
+	workspace: {
+		getConfiguration: jest.fn().mockReturnValue({
+			get: jest.fn().mockReturnValue(null),
+		}),
+	},
 	window: {
 		createTerminal: (...args: any[]) => {
 			mockCreateTerminal(...args)
@@ -20,6 +27,10 @@ jest.mock("vscode", () => ({
 	ThemeIcon: jest.fn(),
 }))
 
+jest.mock("execa", () => ({
+	execa: jest.fn(),
+}))
+
 describe("TerminalProcess", () => {
 	let terminalProcess: TerminalProcess
 	let mockTerminal: jest.Mocked<
@@ -29,13 +40,11 @@ describe("TerminalProcess", () => {
 			}
 		}
 	>
-	let mockTerminalInfo: TerminalInfo
+	let mockTerminalInfo: Terminal
 	let mockExecution: any
 	let mockStream: AsyncIterableIterator<string>
 
 	beforeEach(() => {
-		terminalProcess = new TerminalProcess()
-
 		// Create properly typed mock terminal
 		mockTerminal = {
 			shellIntegration: {
@@ -58,14 +67,10 @@ describe("TerminalProcess", () => {
 			}
 		>
 
-		mockTerminalInfo = {
-			terminal: mockTerminal,
-			busy: false,
-			lastCommand: "",
-			id: 1,
-			running: false,
-			streamClosed: false,
-		}
+		mockTerminalInfo = new Terminal(1, mockTerminal, "./")
+
+		// Create a process for testing
+		terminalProcess = new TerminalProcess(mockTerminalInfo)
 
 		TerminalRegistry["terminals"].push(mockTerminalInfo)
 
@@ -90,7 +95,7 @@ describe("TerminalProcess", () => {
 				yield "More output\n"
 				yield "Final output"
 				yield "\x1b]633;D\x07" // The last chunk contains the command end sequence with bell character.
-				terminalProcess.emit("shell_execution_complete", mockTerminalInfo.id, { exitCode: 0 })
+				terminalProcess.emit("shell_execution_complete", { exitCode: 0 })
 			})()
 
 			mockExecution = {
@@ -99,8 +104,8 @@ describe("TerminalProcess", () => {
 
 			mockTerminal.shellIntegration.executeCommand.mockReturnValue(mockExecution)
 
-			const runPromise = terminalProcess.run(mockTerminal, "test command")
-			terminalProcess.emit("stream_available", mockTerminalInfo.id, mockStream)
+			const runPromise = terminalProcess.run("test command")
+			terminalProcess.emit("stream_available", mockStream)
 			await runPromise
 
 			expect(lines).toEqual(["Initial output", "More output", "Final output"])
@@ -108,19 +113,47 @@ describe("TerminalProcess", () => {
 		})
 
 		it("handles terminals without shell integration", async () => {
+			// Temporarily suppress the expected console.warn for this test
+			const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {})
+
+			// Create a terminal without shell integration
 			const noShellTerminal = {
 				sendText: jest.fn(),
 				shellIntegration: undefined,
+				name: "No Shell Terminal",
+				processId: Promise.resolve(456),
+				creationOptions: {},
+				exitStatus: undefined,
+				state: { isInteractedWith: true },
+				dispose: jest.fn(),
+				hide: jest.fn(),
+				show: jest.fn(),
 			} as unknown as vscode.Terminal
 
-			const noShellPromise = new Promise<void>((resolve) => {
-				terminalProcess.once("no_shell_integration", resolve)
-			})
+			// Create new terminal info with the no-shell terminal
+			const noShellTerminalInfo = new Terminal(2, noShellTerminal, "./")
 
-			await terminalProcess.run(noShellTerminal, "test command")
-			await noShellPromise
+			// Create new process with the no-shell terminal
+			const noShellProcess = new TerminalProcess(noShellTerminalInfo)
 
+			// Set up event listeners to verify events are emitted
+			const eventPromises = Promise.all([
+				new Promise<void>((resolve) =>
+					noShellProcess.once("no_shell_integration", (_message: string) => resolve()),
+				),
+				new Promise<void>((resolve) => noShellProcess.once("completed", (_output?: string) => resolve())),
+				new Promise<void>((resolve) => noShellProcess.once("continue", resolve)),
+			])
+
+			// Run command and wait for all events
+			await noShellProcess.run("test command")
+			await eventPromises
+
+			// Verify sendText was called with the command
 			expect(noShellTerminal.sendText).toHaveBeenCalledWith("test command", true)
+
+			// Restore the original console.warn
+			consoleWarnSpy.mockRestore()
 		})
 
 		it("sets hot state for compiling commands", async () => {
@@ -142,15 +175,15 @@ describe("TerminalProcess", () => {
 				yield "still compiling...\n"
 				yield "done"
 				yield "\x1b]633;D\x07" // The last chunk contains the command end sequence with bell character.
-				terminalProcess.emit("shell_execution_complete", mockTerminalInfo.id, { exitCode: 0 })
+				terminalProcess.emit("shell_execution_complete", { exitCode: 0 })
 			})()
 
 			mockTerminal.shellIntegration.executeCommand.mockReturnValue({
 				read: jest.fn().mockReturnValue(mockStream),
 			})
 
-			const runPromise = terminalProcess.run(mockTerminal, "npm run build")
-			terminalProcess.emit("stream_available", mockTerminalInfo.id, mockStream)
+			const runPromise = terminalProcess.run("npm run build")
+			terminalProcess.emit("stream_available", mockStream)
 
 			expect(terminalProcess.isHot).toBe(true)
 			await runPromise
@@ -186,9 +219,57 @@ describe("TerminalProcess", () => {
 		})
 	})
 
+	describe("interpretExitCode", () => {
+		it("handles undefined exit code", () => {
+			const result = TerminalProcess.interpretExitCode(undefined)
+			expect(result).toEqual({ exitCode: undefined })
+		})
+
+		it("handles normal exit codes (0-128)", () => {
+			const result = TerminalProcess.interpretExitCode(0)
+			expect(result).toEqual({ exitCode: 0 })
+
+			const result2 = TerminalProcess.interpretExitCode(1)
+			expect(result2).toEqual({ exitCode: 1 })
+
+			const result3 = TerminalProcess.interpretExitCode(128)
+			expect(result3).toEqual({ exitCode: 128 })
+		})
+
+		it("interprets signal exit codes (>128)", () => {
+			// SIGTERM (15) -> 128 + 15 = 143
+			const result = TerminalProcess.interpretExitCode(143)
+			expect(result).toEqual({
+				exitCode: 143,
+				signal: 15,
+				signalName: "SIGTERM",
+				coreDumpPossible: false,
+			})
+
+			// SIGSEGV (11) -> 128 + 11 = 139
+			const result2 = TerminalProcess.interpretExitCode(139)
+			expect(result2).toEqual({
+				exitCode: 139,
+				signal: 11,
+				signalName: "SIGSEGV",
+				coreDumpPossible: true,
+			})
+		})
+
+		it("handles unknown signals", () => {
+			const result = TerminalProcess.interpretExitCode(255)
+			expect(result).toEqual({
+				exitCode: 255,
+				signal: 127,
+				signalName: "Unknown Signal (127)",
+				coreDumpPossible: false,
+			})
+		})
+	})
+
 	describe("mergePromise", () => {
 		it("merges promise methods with terminal process", async () => {
-			const process = new TerminalProcess()
+			const process = new TerminalProcess(mockTerminalInfo)
 			const promise = Promise.resolve()
 
 			const merged = mergePromise(process, promise)

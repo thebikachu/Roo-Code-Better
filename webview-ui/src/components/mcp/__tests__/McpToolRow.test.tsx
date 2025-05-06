@@ -1,9 +1,23 @@
 import React from "react"
 import { render, fireEvent, screen } from "@testing-library/react"
 import McpToolRow from "../McpToolRow"
-import { vscode } from "../../../utils/vscode"
+import { vscode } from "@src/utils/vscode"
 
-jest.mock("../../../utils/vscode", () => ({
+// Mock the translation hook
+jest.mock("@src/i18n/TranslationContext", () => ({
+	useAppTranslation: () => ({
+		t: (key: string) => {
+			const translations: Record<string, string> = {
+				"mcp:tool.alwaysAllow": "Always allow",
+				"mcp:tool.parameters": "Parameters",
+				"mcp:tool.noDescription": "No description",
+			}
+			return translations[key] || key
+		},
+	}),
+}))
+
+jest.mock("@src/utils/vscode", () => ({
 	vscode: {
 		postMessage: jest.fn(),
 	},
@@ -69,6 +83,7 @@ describe("McpToolRow", () => {
 			serverName: "test-server",
 			toolName: "test-tool",
 			alwaysAllow: true,
+			source: "global",
 		})
 	})
 

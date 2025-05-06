@@ -1,325 +1,79 @@
 import { mentionRegex, mentionRegexGlobal } from "../context-mentions"
 
-interface TestResult {
-	actual: string | null
-	expected: string | null
-}
+describe("mentionRegex and mentionRegexGlobal", () => {
+	// Test cases for various mention types
+	const testCases = [
+		// Basic file paths
+		{ input: "@/path/to/file.txt", expected: ["@/path/to/file.txt"] },
+		{ input: "@/file.js", expected: ["@/file.js"] },
+		{ input: "@/folder/", expected: ["@/folder/"] },
 
-function testMention(input: string, expected: string | null): TestResult {
-	const match = mentionRegex.exec(input)
-	return {
-		actual: match ? match[0] : null,
-		expected,
-	}
-}
+		// File paths with escaped spaces
+		{ input: "@/path/to/file\\ with\\ spaces.txt", expected: ["@/path/to/file\\ with\\ spaces.txt"] },
+		{ input: "@/users/my\\ project/report\\ final.pdf", expected: ["@/users/my\\ project/report\\ final.pdf"] },
+		{ input: "@/folder\\ with\\ spaces/", expected: ["@/folder\\ with\\ spaces/"] },
+		{ input: "@/a\\ b\\ c.txt", expected: ["@/a\\ b\\ c.txt"] },
 
-function expectMatch(result: TestResult) {
-	if (result.expected === null) {
-		return expect(result.actual).toBeNull()
-	}
-	if (result.actual !== result.expected) {
-		// Instead of console.log, use expect().toBe() with a descriptive message
-		expect(result.actual).toBe(result.expected)
-	}
-}
+		// URLs
+		{ input: "@http://example.com", expected: ["@http://example.com"] },
+		{ input: "@https://example.com/path?query=1", expected: ["@https://example.com/path?query=1"] },
 
-describe("Mention Regex", () => {
-	describe("Windows Path Support", () => {
-		it("matches simple Windows paths", () => {
-			const cases: Array<[string, string]> = [
-				["@C:\\folder\\file.txt", "@C:\\folder\\file.txt"],
-				["@c:\\Program/ Files\\file.txt", "@c:\\Program/ Files\\file.txt"],
-				["@C:\\file.txt", "@C:\\file.txt"],
-			]
+		// Other mentions
+		{ input: "@problems", expected: ["@problems"] },
+		{ input: "@git-changes", expected: ["@git-changes"] },
+		{ input: "@terminal", expected: ["@terminal"] },
+		{ input: "@a1b2c3d", expected: ["@a1b2c3d"] }, // Git commit hash (short)
+		{ input: "@a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0", expected: ["@a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"] }, // Git commit hash (long)
 
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
+		// Mentions within text
+		{
+			input: "Check file @/path/to/file\\ with\\ spaces.txt for details.",
+			expected: ["@/path/to/file\\ with\\ spaces.txt"],
+		},
+		{ input: "See @problems and @terminal output.", expected: ["@problems", "@terminal"] },
+		{ input: "URL: @https://example.com.", expected: ["@https://example.com"] }, // Trailing punctuation
+		{ input: "Commit @a1b2c3d, then check @/file.txt", expected: ["@a1b2c3d", "@/file.txt"] },
 
-		it("matches Windows network shares", () => {
-			const cases: Array<[string, string]> = [
-				["@\\\\server\\share\\file.txt", "@\\\\server\\share\\file.txt"],
-				["@\\\\127.0.0.1\\network-path\\file.txt", "@\\\\127.0.0.1\\network-path\\file.txt"],
-			]
+		// Negative cases (should not match or match partially)
+		{ input: "@/path/with unescaped space.txt", expected: ["@/path/with"] }, // Unescaped space
+		{ input: "@ /path/leading-space.txt", expected: null }, // Space after @
+		{ input: "email@example.com", expected: null }, // Email address
+		{ input: "mention@", expected: null }, // Trailing @
+		{ input: "@/path/trailing\\", expected: null }, // Trailing backslash (invalid escape)
+		{ input: "@/path/to/file\\not-a-space", expected: null }, // Backslash not followed by space
+	]
 
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
+	testCases.forEach(({ input, expected }) => {
+		it(`should handle input: "${input}"`, () => {
+			// Test mentionRegex (first match)
+			const match = input.match(mentionRegex)
+			const firstExpected = expected ? expected[0] : null
+			if (firstExpected) {
+				expect(match).not.toBeNull()
+				// Check the full match (group 0)
+				expect(match?.[0]).toBe(firstExpected)
+				// Check the captured group (group 1) - remove leading '@'
+				expect(match?.[1]).toBe(firstExpected.slice(1))
+			} else {
+				expect(match).toBeNull()
+			}
 
-		it("matches mixed separators", () => {
-			const result = testMention("@C:\\folder\\file.txt", "@C:\\folder\\file.txt")
-			expectMatch(result)
-		})
-
-		it("matches Windows relative paths", () => {
-			const cases: Array<[string, string]> = [
-				["@folder\\file.txt", "@folder\\file.txt"],
-				["@.\\folder\\file.txt", "@.\\folder\\file.txt"],
-				["@..\\parent\\file.txt", "@..\\parent\\file.txt"],
-				["@path\\to\\directory\\", "@path\\to\\directory\\"],
-				["@.\\current\\path\\with/ space.txt", "@.\\current\\path\\with/ space.txt"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
+			// Test mentionRegexGlobal (all matches)
+			const globalMatches = Array.from(input.matchAll(mentionRegexGlobal)).map((m) => m[0])
+			if (expected) {
+				expect(globalMatches).toEqual(expected)
+			} else {
+				expect(globalMatches).toEqual([])
+			}
 		})
 	})
 
-	describe("Escaped Spaces Support", () => {
-		it("matches Unix paths with escaped spaces", () => {
-			const cases: Array<[string, string]> = [
-				["@/path/to/file\\ with\\ spaces.txt", "@/path/to/file\\ with\\ spaces.txt"],
-				["@/path/with\\ \\ multiple\\ spaces.txt", "@/path/with\\ \\ multiple\\ spaces.txt"],
-			]
+	it("should correctly capture the mention part (group 1)", () => {
+		const input = "Mention @/path/to/escaped\\ file.txt and @problems"
+		const matches = Array.from(input.matchAll(mentionRegexGlobal))
 
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-
-		it("matches Windows paths with escaped spaces", () => {
-			const cases: Array<[string, string]> = [
-				["@C:\\path\\to\\file/ with/ spaces.txt", "@C:\\path\\to\\file/ with/ spaces.txt"],
-				["@C:\\Program/ Files\\app\\file.txt", "@C:\\Program/ Files\\app\\file.txt"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
+		expect(matches.length).toBe(2)
+		expect(matches[0][1]).toBe("/path/to/escaped\\ file.txt") // Group 1 should not include '@'
+		expect(matches[1][1]).toBe("problems")
 	})
-
-	describe("Combined Path Variations", () => {
-		it("matches complex path combinations", () => {
-			const cases: Array<[string, string]> = [
-				[
-					"@C:\\Users\\name\\Documents\\file/ with/ spaces.txt",
-					"@C:\\Users\\name\\Documents\\file/ with/ spaces.txt",
-				],
-				[
-					"@\\\\server\\share\\path/ with/ spaces\\file.txt",
-					"@\\\\server\\share\\path/ with/ spaces\\file.txt",
-				],
-				["@C:\\path/ with/ spaces\\file.txt", "@C:\\path/ with/ spaces\\file.txt"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-	})
-
-	describe("Edge Cases", () => {
-		it("handles edge cases correctly", () => {
-			const cases: Array<[string, string]> = [
-				["@C:\\", "@C:\\"],
-				["@/path/to/folder", "@/path/to/folder"],
-				["@C:\\folder\\file with spaces.txt", "@C:\\folder\\file"],
-				["@C:\\Users\\name\\path\\to\\文件夹\\file.txt", "@C:\\Users\\name\\path\\to\\文件夹\\file.txt"],
-				["@/path123/file-name_2.0.txt", "@/path123/file-name_2.0.txt"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-	})
-
-	describe("Existing Functionality", () => {
-		it("matches Unix paths", () => {
-			const cases: Array<[string, string]> = [
-				["@/usr/local/bin/file", "@/usr/local/bin/file"],
-				["@/path/to/file.txt", "@/path/to/file.txt"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-
-		it("matches URLs", () => {
-			const cases: Array<[string, string]> = [
-				["@http://example.com", "@http://example.com"],
-				["@https://example.com/path/to/file.html", "@https://example.com/path/to/file.html"],
-				["@ftp://server.example.com/file.zip", "@ftp://server.example.com/file.zip"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-
-		it("matches git hashes", () => {
-			const cases: Array<[string, string]> = [
-				["@a1b2c3d4e5f6g7h8i9j0", "@a1b2c3d4e5f6g7h8i9j0"],
-				["@abcdef1234567890abcdef1234567890abcdef12", "@abcdef1234567890abcdef1234567890abcdef12"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-
-		it("matches special keywords", () => {
-			const cases: Array<[string, string]> = [
-				["@problems", "@problems"],
-				["@git-changes", "@git-changes"],
-				["@terminal", "@terminal"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-	})
-
-	describe("Invalid Patterns", () => {
-		it("rejects invalid patterns", () => {
-			const cases: Array<[string, null]> = [
-				["C:\\folder\\file.txt", null],
-				["@", null],
-				["@ C:\\file.txt", null],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-
-		it("matches only until invalid characters", () => {
-			const result = testMention("@C:\\folder\\file.txt invalid suffix", "@C:\\folder\\file.txt")
-			expectMatch(result)
-		})
-	})
-
-	describe("In Context", () => {
-		it("matches mentions within text", () => {
-			const cases: Array<[string, string]> = [
-				["Check the file at @C:\\folder\\file.txt for details.", "@C:\\folder\\file.txt"],
-				["See @/path/to/file\\ with\\ spaces.txt for an example.", "@/path/to/file\\ with\\ spaces.txt"],
-				["Review @problems and @git-changes.", "@problems"],
-				["Multiple: @/file1.txt and @C:\\file2.txt and @terminal", "@/file1.txt"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-	})
-
-	describe("Multiple Mentions", () => {
-		it("finds all mentions in a string using global regex", () => {
-			const text = "Check @/path/file1.txt and @C:\\folder\\file2.txt and report any @problems to @git-changes"
-			const matches = text.match(mentionRegexGlobal)
-			expect(matches).toEqual(["@/path/file1.txt", "@C:\\folder\\file2.txt", "@problems", "@git-changes"])
-		})
-	})
-
-	describe("Special Characters in Paths", () => {
-		it("handles special characters in file paths", () => {
-			const cases: Array<[string, string]> = [
-				["@/path/with-dash/file_underscore.txt", "@/path/with-dash/file_underscore.txt"],
-				["@C:\\folder+plus\\file(parens)[]brackets.txt", "@C:\\folder+plus\\file(parens)[]brackets.txt"],
-				["@/path/with/file#hash%percent.txt", "@/path/with/file#hash%percent.txt"],
-				["@/path/with/file@symbol$dollar.txt", "@/path/with/file@symbol$dollar.txt"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-	})
-
-	describe("Mixed Path Types in Single String", () => {
-		it("correctly identifies the first path in a string with multiple path types", () => {
-			const text = "Check both @/unix/path and @C:\\windows\\path for details."
-			const result = mentionRegex.exec(text)
-			expect(result?.[0]).toBe("@/unix/path")
-
-			// Test starting from after the first match
-			const secondSearchStart = text.indexOf("@C:")
-			const secondResult = mentionRegex.exec(text.substring(secondSearchStart))
-			expect(secondResult?.[0]).toBe("@C:\\windows\\path")
-		})
-	})
-
-	describe("Non-Latin Character Support", () => {
-		it("handles international characters in paths", () => {
-			const cases: Array<[string, string]> = [
-				["@/path/to/你好/file.txt", "@/path/to/你好/file.txt"],
-				["@C:\\用户\\документы\\файл.txt", "@C:\\用户\\документы\\файл.txt"],
-				["@/путь/к/файлу.txt", "@/путь/к/файлу.txt"],
-				["@C:\\folder\\file_äöü.txt", "@C:\\folder\\file_äöü.txt"],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-	})
-
-	describe("Mixed Path Delimiters", () => {
-		// Modifying expectations to match current behavior
-		it("documents behavior with mixed forward and backward slashes in Windows paths", () => {
-			const cases: Array<[string, null]> = [
-				// Current implementation doesn't support mixed slashes
-				["@C:\\Users/Documents\\folder/file.txt", null],
-				["@C:/Windows\\System32/drivers\\etc/hosts", null],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-	})
-
-	describe("Extended Negative Tests", () => {
-		// Modifying expectations to match current behavior
-		it("documents behavior with potentially invalid characters", () => {
-			const cases: Array<[string, string]> = [
-				// Current implementation actually matches these patterns
-				["@/path/with<illegal>chars.txt", "@/path/with<illegal>chars.txt"],
-				["@C:\\folder\\file|with|pipe.txt", "@C:\\folder\\file|with|pipe.txt"],
-				['@/path/with"quotes".txt', '@/path/with"quotes".txt'],
-			]
-
-			cases.forEach(([input, expected]) => {
-				const result = testMention(input, expected)
-				expectMatch(result)
-			})
-		})
-	})
-
-	// // These are documented as "not implemented yet"
-	// describe("Future Enhancement Candidates", () => {
-	// 	it("identifies patterns that could be supported in future enhancements", () => {
-	// 		// These patterns aren't currently supported by the regex
-	// 		// but might be considered for future improvements
-	// 		console.log(
-	// 			"The following patterns are not currently supported but might be considered for future enhancements:",
-	// 		)
-	// 		console.log("- Paths with double slashes: @/path//with/double/slash.txt")
-	// 		console.log("- Complex path traversals: @/very/./long/../../path/.././traversal.txt")
-	// 		console.log("- Environment variables in paths: @$HOME/file.txt, @C:\\Users\\%USERNAME%\\file.txt")
-	// 	})
-	// })
 })

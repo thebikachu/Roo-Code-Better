@@ -1,27 +1,32 @@
-import * as vscode from "vscode"
+import fs from "fs/promises"
 import * as path from "path"
+
+import * as vscode from "vscode"
+import { isBinaryFile } from "isbinaryfile"
+
 import { openFile } from "../../integrations/misc/open-file"
 import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
-import { mentionRegexGlobal, formatGitSuggestion, type MentionSuggestion } from "../../shared/context-mentions"
-import fs from "fs/promises"
+import { mentionRegexGlobal, unescapeSpaces } from "../../shared/context-mentions"
+
 import { extractTextFromFile } from "../../integrations/misc/extract-text"
-import { isBinaryFile } from "isbinaryfile"
 import { diagnosticsToProblemsString } from "../../integrations/diagnostics"
 import { getCommitInfo, getWorkingState } from "../../utils/git"
-import { getLatestTerminalOutput } from "../../integrations/terminal/get-latest-output"
+import { getWorkspacePath } from "../../utils/path"
+import { FileContextTracker } from "../context-tracking/FileContextTracker"
 
 export async function openMention(mention?: string): Promise<void> {
 	if (!mention) {
 		return
 	}
 
-	const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0)
+	const cwd = getWorkspacePath()
 	if (!cwd) {
 		return
 	}
 
 	if (mention.startsWith("/")) {
-		const relPath = mention.slice(1)
+		// Slice off the leading slash and unescape any spaces in the path
+		const relPath = unescapeSpaces(mention.slice(1))
 		const absPath = path.resolve(cwd, relPath)
 		if (mention.endsWith("/")) {
 			vscode.commands.executeCommand("revealInExplorer", vscode.Uri.file(absPath))
@@ -37,7 +42,12 @@ export async function openMention(mention?: string): Promise<void> {
 	}
 }
 
-export async function parseMentions(text: string, cwd: string, urlContentFetcher: UrlContentFetcher): Promise<string> {
+export async function parseMentions(
+	text: string,
+	cwd: string,
+	urlContentFetcher: UrlContentFetcher,
+	fileContextTracker?: FileContextTracker,
+): Promise<string> {
 	const mentions: Set<string> = new Set()
 	let parsedText = text.replace(mentionRegexGlobal, (match, mention) => {
 		mentions.add(mention)
@@ -94,6 +104,10 @@ export async function parseMentions(text: string, cwd: string, urlContentFetcher
 					parsedText += `\n\n<folder_content path="${mentionPath}">\n${content}\n</folder_content>`
 				} else {
 					parsedText += `\n\n<file_content path="${mentionPath}">\n${content}\n</file_content>`
+					// Track that this file was mentioned and its content was included
+					if (fileContextTracker) {
+						await fileContextTracker.trackFileContext(mentionPath, "file_mentioned")
+					}
 				}
 			} catch (error) {
 				if (mention.endsWith("/")) {
@@ -104,7 +118,7 @@ export async function parseMentions(text: string, cwd: string, urlContentFetcher
 			}
 		} else if (mention === "problems") {
 			try {
-				const problems = getWorkspaceProblems(cwd)
+				const problems = await getWorkspaceProblems(cwd)
 				parsedText += `\n\n<workspace_diagnostics>\n${problems}\n</workspace_diagnostics>`
 			} catch (error) {
 				parsedText += `\n\n<workspace_diagnostics>\nError fetching diagnostics: ${error.message}\n</workspace_diagnostics>`
@@ -145,18 +159,20 @@ export async function parseMentions(text: string, cwd: string, urlContentFetcher
 }
 
 async function getFileOrFolderContent(mentionPath: string, cwd: string): Promise<string> {
-	const absPath = path.resolve(cwd, mentionPath)
+	// Unescape spaces in the path before resolving it
+	const unescapedPath = unescapeSpaces(mentionPath)
+	const absPath = path.resolve(cwd, unescapedPath)
 
 	try {
 		const stats = await fs.stat(absPath)
 
 		if (stats.isFile()) {
-			const isBinary = await isBinaryFile(absPath).catch(() => false)
-			if (isBinary) {
-				return "(Binary file, unable to display content)"
+			try {
+				const content = await extractTextFromFile(absPath)
+				return content
+			} catch (error) {
+				return `(Failed to read contents of ${mentionPath}): ${error.message}`
 			}
-			const content = await extractTextFromFile(absPath)
-			return content
 		} else if (stats.isDirectory()) {
 			const entries = await fs.readdir(absPath, { withFileTypes: true })
 			let folderContent = ""
@@ -198,9 +214,9 @@ async function getFileOrFolderContent(mentionPath: string, cwd: string): Promise
 	}
 }
 
-function getWorkspaceProblems(cwd: string): string {
+async function getWorkspaceProblems(cwd: string): Promise<string> {
 	const diagnostics = vscode.languages.getDiagnostics()
-	const result = diagnosticsToProblemsString(
+	const result = await diagnosticsToProblemsString(
 		diagnostics,
 		[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning],
 		cwd,
@@ -209,4 +225,51 @@ function getWorkspaceProblems(cwd: string): string {
 		return "No errors or warnings detected."
 	}
 	return result
+}
+
+/**
+ * Gets the contents of the active terminal
+ * @returns The terminal contents as a string
+ */
+export async function getLatestTerminalOutput(): Promise<string> {
+	// Store original clipboard content to restore later
+	const originalClipboard = await vscode.env.clipboard.readText()
+
+	try {
+		// Select terminal content
+		await vscode.commands.executeCommand("workbench.action.terminal.selectAll")
+
+		// Copy selection to clipboard
+		await vscode.commands.executeCommand("workbench.action.terminal.copySelection")
+
+		// Clear the selection
+		await vscode.commands.executeCommand("workbench.action.terminal.clearSelection")
+
+		// Get terminal contents from clipboard
+		let terminalContents = (await vscode.env.clipboard.readText()).trim()
+
+		// Check if there's actually a terminal open
+		if (terminalContents === originalClipboard) {
+			return ""
+		}
+
+		// Clean up command separation
+		const lines = terminalContents.split("\n")
+		const lastLine = lines.pop()?.trim()
+
+		if (lastLine) {
+			let i = lines.length - 1
+
+			while (i >= 0 && !lines[i].trim().startsWith(lastLine)) {
+				i--
+			}
+
+			terminalContents = lines.slice(Math.max(i, 0)).join("\n")
+		}
+
+		return terminalContents
+	} finally {
+		// Restore original clipboard content
+		await vscode.env.clipboard.writeText(originalClipboard)
+	}
 }

@@ -6,7 +6,6 @@ jest.mock("../../core/prompts/sections/custom-instructions", () => ({
 }))
 
 import { isToolAllowedForMode, FileRestrictionError, ModeConfig, getFullModeDetails, modes } from "../modes"
-import * as vscode from "vscode"
 import { addCustomInstructions } from "../../core/prompts/sections/custom-instructions"
 
 describe("isToolAllowedForMode", () => {
@@ -255,73 +254,6 @@ describe("isToolAllowedForMode", () => {
 
 		expect(isToolAllowedForMode("write_to_file", "markdown-editor", customModes, toolRequirements)).toBe(false)
 	})
-
-	describe("experimental tools", () => {
-		it("disables tools when experiment is disabled", () => {
-			const experiments = {
-				search_and_replace: false,
-				insert_content: false,
-			}
-
-			expect(
-				isToolAllowedForMode(
-					"search_and_replace",
-					"test-exp-mode",
-					customModes,
-					undefined,
-					undefined,
-					experiments,
-				),
-			).toBe(false)
-
-			expect(
-				isToolAllowedForMode("insert_content", "test-exp-mode", customModes, undefined, undefined, experiments),
-			).toBe(false)
-		})
-
-		it("allows tools when experiment is enabled", () => {
-			const experiments = {
-				search_and_replace: true,
-				insert_content: true,
-			}
-
-			expect(
-				isToolAllowedForMode(
-					"search_and_replace",
-					"test-exp-mode",
-					customModes,
-					undefined,
-					undefined,
-					experiments,
-				),
-			).toBe(true)
-
-			expect(
-				isToolAllowedForMode("insert_content", "test-exp-mode", customModes, undefined, undefined, experiments),
-			).toBe(true)
-		})
-
-		it("allows non-experimental tools when experiments are disabled", () => {
-			const experiments = {
-				search_and_replace: false,
-				insert_content: false,
-			}
-
-			expect(
-				isToolAllowedForMode("read_file", "markdown-editor", customModes, undefined, undefined, experiments),
-			).toBe(true)
-			expect(
-				isToolAllowedForMode(
-					"write_to_file",
-					"markdown-editor",
-					customModes,
-					undefined,
-					{ path: "test.md" },
-					experiments,
-				),
-			).toBe(true)
-		})
-	})
 })
 
 describe("FileRestrictionError", () => {
@@ -339,7 +271,7 @@ describe("FileRestrictionError", () => {
 			expect(debugMode).toBeDefined()
 			expect(debugMode).toMatchObject({
 				slug: "debug",
-				name: "Debug",
+				name: "🪲 Debug",
 				roleDefinition:
 					"You are Roo, an expert software debugger specializing in systematic problem diagnosis and resolution.",
 				groups: ["read", "edit", "browser", "command", "mcp"],
@@ -360,14 +292,14 @@ describe("FileRestrictionError", () => {
 			const result = await getFullModeDetails("debug")
 			expect(result).toMatchObject({
 				slug: "debug",
-				name: "Debug",
+				name: "🪲 Debug",
 				roleDefinition:
 					"You are Roo, an expert software debugger specializing in systematic problem diagnosis and resolution.",
 			})
 		})
 
 		it("applies custom mode overrides", async () => {
-			const customModes = [
+			const customModes: ModeConfig[] = [
 				{
 					slug: "debug",
 					name: "Custom Debug",
@@ -402,7 +334,7 @@ describe("FileRestrictionError", () => {
 			const options = {
 				cwd: "/test/path",
 				globalCustomInstructions: "Global instructions",
-				preferredLanguage: "en",
+				language: "en",
 			}
 
 			await getFullModeDetails("debug", undefined, undefined, options)
@@ -412,7 +344,7 @@ describe("FileRestrictionError", () => {
 				"Global instructions",
 				"/test/path",
 				"debug",
-				{ preferredLanguage: "en" },
+				{ language: "en" },
 			)
 		})
 

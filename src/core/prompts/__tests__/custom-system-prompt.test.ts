@@ -2,6 +2,7 @@ import { SYSTEM_PROMPT } from "../system"
 import { defaultModeSlug, modes } from "../../../shared/modes"
 import * as vscode from "vscode"
 import * as fs from "fs/promises"
+import { toPosix } from "./utils"
 
 // Mock the fs/promises module
 jest.mock("fs/promises", () => ({
@@ -46,8 +47,6 @@ const mockContext = {
 } as unknown as vscode.ExtensionContext
 
 describe("File-Based Custom System Prompt", () => {
-	const experiments = {}
-
 	beforeEach(() => {
 		// Reset mocks before each test
 		jest.clearAllMocks()
@@ -66,18 +65,17 @@ describe("File-Based Custom System Prompt", () => {
 		const prompt = await SYSTEM_PROMPT(
 			mockContext,
 			"test/path", // Using a relative path without leading slash
-			false,
-			undefined,
-			undefined,
-			undefined,
-			defaultModeSlug,
-			customModePrompts,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			experiments,
-			true,
+			false, // supportsComputerUse
+			undefined, // mcpHub
+			undefined, // diffStrategy
+			undefined, // browserViewportSize
+			defaultModeSlug, // mode
+			customModePrompts, // customModePrompts
+			undefined, // customModes
+			undefined, // globalCustomInstructions
+			undefined, // diffEnabled
+			undefined, // experiments
+			true, // enableMcpServerCreation
 		)
 
 		// Should contain default sections
@@ -92,7 +90,7 @@ describe("File-Based Custom System Prompt", () => {
 		const fileCustomSystemPrompt = "Custom system prompt from file"
 		// When called with utf-8 encoding, return a string
 		mockedFs.readFile.mockImplementation((filePath, options) => {
-			if (filePath.toString().includes(`.roo/system-prompt-${defaultModeSlug}`) && options === "utf-8") {
+			if (toPosix(filePath).includes(`.roo/system-prompt-${defaultModeSlug}`) && options === "utf-8") {
 				return Promise.resolve(fileCustomSystemPrompt)
 			}
 			return Promise.reject({ code: "ENOENT" })
@@ -101,18 +99,17 @@ describe("File-Based Custom System Prompt", () => {
 		const prompt = await SYSTEM_PROMPT(
 			mockContext,
 			"test/path", // Using a relative path without leading slash
-			false,
-			undefined,
-			undefined,
-			undefined,
-			defaultModeSlug,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			experiments,
-			true,
+			false, // supportsComputerUse
+			undefined, // mcpHub
+			undefined, // diffStrategy
+			undefined, // browserViewportSize
+			defaultModeSlug, // mode
+			undefined, // customModePrompts
+			undefined, // customModes
+			undefined, // globalCustomInstructions
+			undefined, // diffEnabled
+			undefined, // experiments
+			true, // enableMcpServerCreation
 		)
 
 		// Should contain role definition and file-based system prompt
@@ -120,7 +117,6 @@ describe("File-Based Custom System Prompt", () => {
 		expect(prompt).toContain(fileCustomSystemPrompt)
 
 		// Should not contain any of the default sections
-		expect(prompt).not.toContain("TOOL USE")
 		expect(prompt).not.toContain("CAPABILITIES")
 		expect(prompt).not.toContain("MODES")
 	})
@@ -129,7 +125,7 @@ describe("File-Based Custom System Prompt", () => {
 		// Mock the readFile to return content from a file
 		const fileCustomSystemPrompt = "Custom system prompt from file"
 		mockedFs.readFile.mockImplementation((filePath, options) => {
-			if (filePath.toString().includes(`.roo/system-prompt-${defaultModeSlug}`) && options === "utf-8") {
+			if (toPosix(filePath).includes(`.roo/system-prompt-${defaultModeSlug}`) && options === "utf-8") {
 				return Promise.resolve(fileCustomSystemPrompt)
 			}
 			return Promise.reject({ code: "ENOENT" })
@@ -146,18 +142,17 @@ describe("File-Based Custom System Prompt", () => {
 		const prompt = await SYSTEM_PROMPT(
 			mockContext,
 			"test/path", // Using a relative path without leading slash
-			false,
-			undefined,
-			undefined,
-			undefined,
-			defaultModeSlug,
-			customModePrompts,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			experiments,
-			true,
+			false, // supportsComputerUse
+			undefined, // mcpHub
+			undefined, // diffStrategy
+			undefined, // browserViewportSize
+			defaultModeSlug, // mode
+			customModePrompts, // customModePrompts
+			undefined, // customModes
+			undefined, // globalCustomInstructions
+			undefined, // diffEnabled
+			undefined, // experiments
+			true, // enableMcpServerCreation
 		)
 
 		// Should contain custom role definition and file-based system prompt
@@ -165,7 +160,6 @@ describe("File-Based Custom System Prompt", () => {
 		expect(prompt).toContain(fileCustomSystemPrompt)
 
 		// Should not contain any of the default sections
-		expect(prompt).not.toContain("TOOL USE")
 		expect(prompt).not.toContain("CAPABILITIES")
 		expect(prompt).not.toContain("MODES")
 	})

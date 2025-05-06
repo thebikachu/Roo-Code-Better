@@ -1,96 +1,44 @@
 import * as path from "path"
 import Mocha from "mocha"
 import { glob } from "glob"
-import { ClineAPI, ClineProvider } from "../../../src/exports/cline"
 import * as vscode from "vscode"
 
+import type { RooCodeAPI } from "../../../src/exports/roo-code"
+
+import { waitFor } from "./utils"
+
 declare global {
-	var api: ClineAPI
-	var provider: ClineProvider
-	var extension: vscode.Extension<ClineAPI> | undefined
-	var panel: vscode.WebviewPanel | undefined
+	var api: RooCodeAPI
 }
 
-export async function run(): Promise<void> {
-	const mocha = new Mocha({
-		ui: "tdd",
-		timeout: 600000, // 10 minutes to compensate for time communicating with LLM while running in GHA.
+export async function run() {
+	const extension = vscode.extensions.getExtension<RooCodeAPI>("RooVeterinaryInc.roo-cline")
+
+	if (!extension) {
+		throw new Error("Extension not found")
+	}
+
+	const api = extension.isActive ? extension.exports : await extension.activate()
+
+	await api.setConfiguration({
+		apiProvider: "openrouter" as const,
+		openRouterApiKey: process.env.OPENROUTER_API_KEY!,
+		openRouterModelId: "google/gemini-2.0-flash-001",
 	})
 
-	const testsRoot = path.resolve(__dirname, "..")
+	await vscode.commands.executeCommand("roo-cline.SidebarProvider.focus")
+	await waitFor(() => api.isReady())
 
-	try {
-		// Find all test files.
-		const files = await glob("**/**.test.js", { cwd: testsRoot })
+	// Expose the API to the tests.
+	globalThis.api = api
 
-		// Add files to the test suite.
-		files.forEach((f: string) => mocha.addFile(path.resolve(testsRoot, f)))
+	// Add all the tests to the runner.
+	const mocha = new Mocha({ ui: "tdd", timeout: 300_000 })
+	const cwd = path.resolve(__dirname, "..")
+	;(await glob("**/**.test.js", { cwd })).forEach((testFile) => mocha.addFile(path.resolve(cwd, testFile)))
 
-		// Set up global extension, api, provider, and panel.
-		globalThis.extension = vscode.extensions.getExtension("RooVeterinaryInc.roo-cline")
-
-		if (!globalThis.extension) {
-			throw new Error("Extension not found")
-		}
-
-		globalThis.api = globalThis.extension.isActive
-			? globalThis.extension.exports
-			: await globalThis.extension.activate()
-
-		globalThis.provider = globalThis.api.sidebarProvider
-
-		await globalThis.provider.updateGlobalState("apiProvider", "openrouter")
-		await globalThis.provider.updateGlobalState("openRouterModelId", "anthropic/claude-3.5-sonnet")
-
-		await globalThis.provider.storeSecret(
-			"openRouterApiKey",
-			process.env.OPENROUTER_API_KEY || "sk-or-v1-fake-api-key",
-		)
-
-		globalThis.panel = vscode.window.createWebviewPanel(
-			"roo-cline.SidebarProvider",
-			"Roo Code",
-			vscode.ViewColumn.One,
-			{
-				enableScripts: true,
-				enableCommandUris: true,
-				retainContextWhenHidden: true,
-				localResourceRoots: [globalThis.extension?.extensionUri],
-			},
-		)
-
-		await globalThis.provider.resolveWebviewView(globalThis.panel)
-
-		let startTime = Date.now()
-		const timeout = 60000
-		const interval = 1000
-
-		while (Date.now() - startTime < timeout) {
-			if (globalThis.provider.viewLaunched) {
-				break
-			}
-
-			await new Promise((resolve) => setTimeout(resolve, interval))
-		}
-
-		// Run the mocha test.
-		return new Promise((resolve, reject) => {
-			try {
-				mocha.run((failures: number) => {
-					if (failures > 0) {
-						reject(new Error(`${failures} tests failed.`))
-					} else {
-						resolve()
-					}
-				})
-			} catch (err) {
-				console.error(err)
-				reject(err)
-			}
-		})
-	} catch (err) {
-		console.error("Error while running tests:")
-		console.error(err)
-		throw err
-	}
+	// Let's go!
+	return new Promise<void>((resolve, reject) =>
+		mocha.run((failures) => (failures === 0 ? resolve() : reject(new Error(`${failures} tests failed.`)))),
+	)
 }
