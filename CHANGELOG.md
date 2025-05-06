@@ -1,5 +1,17 @@
 # Roo Code Changelog
 
+## 3.16.0
+
+### Minor Changes
+
+- ## New Features
+
+### Patch Changes
+
+- Organize provider settings into separate components
+- Split Cline.getEnvironmentDetails out into a standalone function
+- Enable Gemini prompt caching by default
+
 ## [3.15.5] - 2025-05-05
 
 - Update @google/genai to 0.12 (includes some streaming completion bug fixes)
