@@ -1,5 +1,12 @@
 # Roo Code Changelog
 
+## 3.16.1
+
+### Patch Changes
+
+- Add editor name to telemetry
+-   - Add LiteLLM provider support
+
 ## [3.16.0] - 2025-05-06
 
 - Add vertical tab navigation to the settings (thanks @dlab-anton)
