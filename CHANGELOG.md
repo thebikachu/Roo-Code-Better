@@ -1,11 +1,15 @@
 # Roo Code Changelog
 
-## 3.16.1
+## [3.16.1] - 2025-05-07
 
-### Patch Changes
-
-- Add editor name to telemetry
--   - Add LiteLLM provider support
+- Add LiteLLM provider support
+- Improve stability by detecting and preventing tool loops
+- Add Dutch localization (thanks @Githubguy132010!)
+- Add editor name to telemetry for better analytics
+- Migrate to Tailwind CSS for improved UI consistency
+- Fix footer button wrapping in About section on narrow screens (thanks @ecmasx!)
+- Update evals defaults
+- Update dependencies to latest versions
 
 ## [3.16.0] - 2025-05-06
 
