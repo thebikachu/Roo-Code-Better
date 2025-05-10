@@ -1,8 +1,6 @@
 # Roo Code Changelog
 
-## 3.16.4
-
-### Patch Changes
+## [3.16.4]
 
 -   - Improve provider profile management in the external API
 
