@@ -1,6 +1,6 @@
 # Roo Code Changelog
 
-## [3.16.5]
+## [3.16.5] - 2025-05-10
 
 - Revert profile management changes until we track down a bug with defaults
 
