@@ -1,5 +1,11 @@
 # Roo Code Changelog
 
+## 3.16.4
+
+### Patch Changes
+
+-   - Improve provider profile management in the external API
+
 ## [3.16.3] - 2025-05-08
 
 - Revert Tailwind migration while we fix a few spots
