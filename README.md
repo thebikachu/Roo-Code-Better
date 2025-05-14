@@ -137,14 +137,8 @@ git clone https://github.com/RooVetGit/Roo-Code.git
 pnpm install
 ```
 
-3. **Start the webview (Vite/React app with HMR)**:
-
-```sh
-pnpm dev
-```
-
-4. **Debug**:
-   Press `F5` (or **Run** → **Start Debugging**) in VSCode to open a new session with Roo Code loaded.
+3. **Run the extension**:
+   Press `F5` (or **Run** → **Start Debugging**) in VSCode to open a new window with Roo Code running.
 
 Changes to the webview will appear immediately. Changes to the core extension will require a restart of the extension host.
 
