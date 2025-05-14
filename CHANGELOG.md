@@ -1,5 +1,20 @@
 # Roo Code Changelog
 
+## 3.17.0
+
+### Minor Changes
+
+-   - Enable Gemini implicit caching
+
+### Patch Changes
+
+- Add a 'when to use' section to mode definitions
+- Adds experimental feature to intelligently condense the task context
+- Switch to the new Roo message parser
+- Update announcement to use a @shadcn/ui dialog
+- Requesty: Fix token usage counts
+-   - Enable Gemini implicit caching
+
 ## [3.16.6] - 2025-05-12
 
 - Restore "Improve provider profile management in the external API"
