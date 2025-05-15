@@ -32,7 +32,7 @@ import { getApiMetrics } from "../../shared/getApiMetrics"
 import { HistoryItem } from "../../shared/HistoryItem"
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug } from "../../shared/modes"
-import { DiffStrategy } from "../../shared/tools"
+import { DiffStrategy, AttachedFileSpec } from "../../shared/tools"
 
 // services
 import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
@@ -79,9 +79,7 @@ import {
 	checkpointDiff,
 } from "../checkpoints"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
-import { ApiMessage } from "../task-persistence/apiMessages"
-import { getMessagesSinceLastSummary } from "../condense"
-import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
+import { processFileForReading, formatProcessedFileResultToString } from "../../shared/fileReadUtils"
 
 export type ClineEvents = {
 	message: [{ action: "created" | "updated"; message: ClineMessage }]
@@ -107,6 +105,7 @@ export type TaskOptions = {
 	consecutiveMistakeLimit?: number
 	task?: string
 	images?: string[]
+	attachedFiles?: AttachedFileSpec[]
 	historyItem?: HistoryItem
 	experiments?: Record<string, boolean>
 	startTask?: boolean
@@ -124,6 +123,7 @@ export class Task extends EventEmitter<ClineEvents> {
 	readonly parentTask: Task | undefined = undefined
 	readonly taskNumber: number
 	readonly workspacePath: string
+	public readonly attachedFiles: AttachedFileSpec[] = []
 
 	providerRef: WeakRef<ClineProvider>
 	private readonly globalStoragePath: string
@@ -158,7 +158,7 @@ export class Task extends EventEmitter<ClineEvents> {
 	didEditFile: boolean = false
 
 	// LLM Messages & Chat Messages
-	apiConversationHistory: ApiMessage[] = []
+	apiConversationHistory: (Anthropic.MessageParam & { ts?: number })[] = []
 	clineMessages: ClineMessage[] = []
 
 	// Ask
@@ -201,6 +201,7 @@ export class Task extends EventEmitter<ClineEvents> {
 		consecutiveMistakeLimit = 3,
 		task,
 		images,
+		attachedFiles,
 		historyItem,
 		startTask = true,
 		rootTask,
@@ -246,6 +247,7 @@ export class Task extends EventEmitter<ClineEvents> {
 		this.rootTask = rootTask
 		this.parentTask = parentTask
 		this.taskNumber = taskNumber
+		this.attachedFiles = attachedFiles || []
 
 		if (historyItem) {
 			telemetryService.captureTaskRestarted(this.taskId)
@@ -287,7 +289,7 @@ export class Task extends EventEmitter<ClineEvents> {
 
 	// API Messages
 
-	private async getSavedApiConversationHistory(): Promise<ApiMessage[]> {
+	private async getSavedApiConversationHistory(): Promise<Anthropic.MessageParam[]> {
 		return readApiMessages({ taskId: this.taskId, globalStoragePath: this.globalStoragePath })
 	}
 
@@ -297,7 +299,7 @@ export class Task extends EventEmitter<ClineEvents> {
 		await this.saveApiConversationHistory()
 	}
 
-	async overwriteApiConversationHistory(newHistory: ApiMessage[]) {
+	async overwriteApiConversationHistory(newHistory: Anthropic.MessageParam[]) {
 		this.apiConversationHistory = newHistory
 		await this.saveApiConversationHistory()
 	}
@@ -586,6 +588,42 @@ export class Task extends EventEmitter<ClineEvents> {
 
 	// Start / Abort / Resume
 
+	/**
+	 * Formats the content of attached files for inclusion in the task prompt
+	 * @param workspaceRoot The root directory of the workspace
+	 * @param maxReadFileLine Maximum number of lines to read from each file
+	 * @returns Formatted string containing all attached files content
+	 */
+	private async _formatAttachedFilesContent(workspaceRoot: string, maxReadFileLine: number): Promise<string> {
+		const attachedFilesStrings: string[] = []
+
+		for (const fileSpec of this.attachedFiles) {
+			// Handle both string and AttachedFileSpec types
+			const relativePath = typeof fileSpec === "string" ? fileSpec : fileSpec.path
+			if (!relativePath) continue // Skip empty paths
+
+			const requestedStartLine = typeof fileSpec === "string" ? undefined : fileSpec.startLine
+			const requestedEndLine = typeof fileSpec === "string" ? undefined : fileSpec.endLine
+			const absolutePath = path.join(workspaceRoot, relativePath)
+
+			// Process the file using shared utilities
+			const result = await processFileForReading(
+				absolutePath,
+				relativePath,
+				maxReadFileLine,
+				requestedStartLine,
+				requestedEndLine,
+				this.rooIgnoreController,
+			)
+
+			// Format the result to string
+			const fileString = formatProcessedFileResultToString(result)
+			attachedFilesStrings.push(fileString)
+		}
+
+		return attachedFilesStrings.join("\n")
+	}
+
 	private async startTask(task?: string, images?: string[]): Promise<void> {
 		// `conversationHistory` (for API) and `clineMessages` (for webview)
 		// need to be in sync.
@@ -597,6 +635,10 @@ export class Task extends EventEmitter<ClineEvents> {
 		this.apiConversationHistory = []
 		await this.providerRef.deref()?.postStateToWebview()
 
+		const providerState = await this.providerRef.deref()?.getState()
+		const workspaceRoot = this.cwd
+		const maxReadFileLine = providerState?.maxReadFileLine ?? 500 // Default to 500
+
 		await this.say("text", task, images)
 		this.isInitialized = true
 
@@ -604,13 +646,20 @@ export class Task extends EventEmitter<ClineEvents> {
 
 		console.log(`[subtasks] task ${this.taskId}.${this.instanceId} starting`)
 
-		await this.initiateTaskLoop([
-			{
-				type: "text",
-				text: `<task>\n${task}\n</task>`,
-			},
-			...imageBlocks,
-		])
+		const taskBlock = `<task>\n${task ?? ""}\n</task>`
+
+		const attachedFilesContent = await this._formatAttachedFilesContent(workspaceRoot, maxReadFileLine)
+
+		const attachedFilesBlock =
+			this.attachedFiles.length > 0 ? `<attached-files>\n${attachedFilesContent}</attached-files>` : ""
+
+		const blocks: Anthropic.ContentBlockParam[] = [{ type: "text", text: taskBlock }, ...imageBlocks]
+
+		if (attachedFilesBlock) {
+			blocks.push({ type: "text", text: attachedFilesBlock })
+		}
+
+		await this.initiateTaskLoop(blocks)
 	}
 
 	public async resumePausedTask(lastMessage: string) {
@@ -700,7 +749,8 @@ export class Task extends EventEmitter<ClineEvents> {
 
 		// Make sure that the api conversation history can be resumed by the API,
 		// even if it goes out of sync with cline messages.
-		let existingApiConversationHistory: ApiMessage[] = await this.getSavedApiConversationHistory()
+		let existingApiConversationHistory: Anthropic.Messages.MessageParam[] =
+			await this.getSavedApiConversationHistory()
 
 		// v2.0 xml tags refactor caveat: since we don't use tools anymore, we need to replace all tool use blocks with a text block since the API disallows conversations with tool uses and no tool schema
 		const conversationWithoutToolBlocks = existingApiConversationHistory.map((message) => {
@@ -744,7 +794,7 @@ export class Task extends EventEmitter<ClineEvents> {
 		// if the last message is a user message, we can need to get the assistant message before it to see if it made tool calls, and if so, fill in the remaining tool responses with 'interrupted'
 
 		let modifiedOldUserContent: Anthropic.Messages.ContentBlockParam[] // either the last message if its user message, or the user message before the last (assistant) message
-		let modifiedApiConversationHistory: ApiMessage[] // need to remove the last user message to replace with new modified user message
+		let modifiedApiConversationHistory: Anthropic.Messages.MessageParam[] // need to remove the last user message to replace with new modified user message
 		if (existingApiConversationHistory.length > 0) {
 			const lastMessage = existingApiConversationHistory[existingApiConversationHistory.length - 1]
 
@@ -770,7 +820,7 @@ export class Task extends EventEmitter<ClineEvents> {
 					modifiedOldUserContent = []
 				}
 			} else if (lastMessage.role === "user") {
-				const previousAssistantMessage: ApiMessage | undefined =
+				const previousAssistantMessage: Anthropic.Messages.MessageParam | undefined =
 					existingApiConversationHistory[existingApiConversationHistory.length - 2]
 
 				const existingUserContent: Anthropic.Messages.ContentBlockParam[] = Array.isArray(lastMessage.content)
@@ -1421,7 +1471,6 @@ export class Task extends EventEmitter<ClineEvents> {
 			enableMcpServerCreation,
 			browserToolEnabled,
 			language,
-			maxConcurrentFileReads,
 		} = (await this.providerRef.deref()?.getState()) ?? {}
 
 		const { customModes } = (await this.providerRef.deref()?.getState()) ?? {}
@@ -1449,9 +1498,6 @@ export class Task extends EventEmitter<ClineEvents> {
 				enableMcpServerCreation,
 				language,
 				rooIgnoreInstructions,
-				{
-					maxConcurrentFileReads,
-				},
 			)
 		})()
 
@@ -1486,24 +1532,44 @@ export class Task extends EventEmitter<ClineEvents> {
 
 			const contextWindow = modelInfo.contextWindow
 
-			const autoCondenseContext = experiments?.autoCondenseContext ?? false
 			const trimmedMessages = await truncateConversationIfNeeded({
 				messages: this.apiConversationHistory,
 				totalTokens,
 				maxTokens,
 				contextWindow,
 				apiHandler: this.api,
-				autoCondenseContext,
 			})
+
 			if (trimmedMessages !== this.apiConversationHistory) {
 				await this.overwriteApiConversationHistory(trimmedMessages)
 			}
 		}
 
-		const messagesSinceLastSummary = getMessagesSinceLastSummary(this.apiConversationHistory)
-		const cleanConversationHistory = maybeRemoveImageBlocks(messagesSinceLastSummary, this.api).map(
-			({ role, content }) => ({ role, content }),
-		)
+		// Clean conversation history by:
+		// 1. Converting to Anthropic.MessageParam by spreading only the API-required properties.
+		// 2. Converting image blocks to text descriptions if model doesn't support images.
+		const cleanConversationHistory = this.apiConversationHistory.map(({ role, content }) => {
+			// Handle array content (could contain image blocks).
+			if (Array.isArray(content)) {
+				if (!this.api.getModel().info.supportsImages) {
+					// Convert image blocks to text descriptions.
+					content = content.map((block) => {
+						if (block.type === "image") {
+							// Convert image blocks to text descriptions.
+							// Note: We can't access the actual image content/url due to API limitations,
+							// but we can indicate that an image was present in the conversation.
+							return {
+								type: "text",
+								text: "[Referenced image in conversation]",
+							}
+						}
+						return block
+					})
+				}
+			}
+
+			return { role, content }
+		})
 
 		const stream = this.api.createMessage(systemPrompt, cleanConversationHistory)
 		const iterator = stream[Symbol.asyncIterator]()
