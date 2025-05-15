@@ -1,8 +1,6 @@
 # Roo Code Changelog
 
-## 3.17.1
-
-### Patch Changes
+## [3.17.1]
 
 - Fix command display in the approval required case
 
