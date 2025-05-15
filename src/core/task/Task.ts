@@ -80,7 +80,7 @@ import {
 } from "../checkpoints"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
 import { ApiMessage } from "../task-persistence/apiMessages"
-import { getMessagesSinceLastSummary } from "../condense"
+import { getMessagesSinceLastSummary, summarizeConversation } from "../condense"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
 export type ClineEvents = {
@@ -485,6 +485,13 @@ export class Task extends EventEmitter<ClineEvents> {
 			this.terminalProcess?.continue()
 		} else if (terminalOperation === "abort") {
 			this.terminalProcess?.abort()
+		}
+	}
+
+	public async condenseContext(): Promise<void> {
+		const messages = await summarizeConversation(this.apiConversationHistory, this.api)
+		if (messages !== this.apiConversationHistory) {
+			this.overwriteApiConversationHistory(messages)
 		}
 	}
 
