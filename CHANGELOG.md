@@ -1,5 +1,11 @@
 # Roo Code Changelog
 
+## 3.17.1
+
+### Patch Changes
+
+- Fix command display in the approval required case
+
 ## [3.17.0] - 2025-05-14
 
 - Enable Gemini implicit caching
