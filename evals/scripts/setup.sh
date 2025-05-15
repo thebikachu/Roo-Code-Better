@@ -305,7 +305,7 @@ if [[ ! -d "../../evals" ]]; then
   if gh auth status &>/dev/null; then
     gh repo clone cte/evals ../../evals || exit 1
   else
-    git clone https://github.com/cte/evals.git ../../evals || exit 1
+    git clone https://github.com/RooCodeInc/Roo-Code-Evals.git ../../evals || exit 1
   fi
 
   echo "✅ Done"
