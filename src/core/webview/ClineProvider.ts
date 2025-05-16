@@ -450,7 +450,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 		options: Partial<
 			Pick<
 				TaskOptions,
-				| "customInstructions"
 				| "enableDiff"
 				| "enableCheckpoints"
 				| "fuzzyMatchThreshold"
