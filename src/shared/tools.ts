@@ -26,6 +26,15 @@ export interface TextContent {
 	partial: boolean
 }
 
+/**
+ * Represents a file to be attached to a task, optionally with line range specifications
+ */
+export interface AttachedFileSpec {
+	path: string
+	startLine?: number
+	endLine?: number
+}
+
 export const toolParamNames = [
 	"command",
 	"path",
@@ -63,7 +72,7 @@ export const toolParamNames = [
 	"args",
 	"start_line",
 	"end_line",
-	"args",
+	"files",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -149,7 +158,7 @@ export interface SwitchModeToolUse extends ToolUse {
 
 export interface NewTaskToolUse extends ToolUse {
 	name: "new_task"
-	params: Partial<Pick<Record<ToolParamName, string>, "mode" | "message">>
+	params: Partial<Pick<Record<ToolParamName, string>, "mode" | "message" | "files">>
 }
 
 export interface SearchAndReplaceToolUse extends ToolUse {
