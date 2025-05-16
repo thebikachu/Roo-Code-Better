@@ -19,7 +19,7 @@ import { supportPrompt } from "../../shared/support-prompt"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { HistoryItem } from "../../shared/HistoryItem"
 import { ExtensionMessage } from "../../shared/ExtensionMessage"
-import { Mode, PromptComponent, defaultModeSlug } from "../../shared/modes"
+import { Mode, defaultModeSlug } from "../../shared/modes"
 import { experimentDefault } from "../../shared/experiments"
 import { formatLanguage } from "../../shared/language"
 import { Terminal } from "../../integrations/terminal/Terminal"
@@ -464,22 +464,15 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	) {
 		const {
 			apiConfiguration,
-			customModePrompts,
 			diffEnabled: enableDiff,
 			enableCheckpoints,
 			fuzzyMatchThreshold,
-			mode,
-			customInstructions: globalInstructions,
 			experiments,
 		} = await this.getState()
-
-		const modePrompt = customModePrompts?.[mode] as PromptComponent
-		const effectiveInstructions = [globalInstructions, modePrompt?.customInstructions].filter(Boolean).join("\n\n")
 
 		const cline = new Task({
 			provider: this,
 			apiConfiguration,
-			customInstructions: effectiveInstructions,
 			enableDiff,
 			enableCheckpoints,
 			fuzzyMatchThreshold,
@@ -507,22 +500,15 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 
 		const {
 			apiConfiguration,
-			customModePrompts,
 			diffEnabled: enableDiff,
 			enableCheckpoints,
 			fuzzyMatchThreshold,
-			mode,
-			customInstructions: globalInstructions,
 			experiments,
 		} = await this.getState()
-
-		const modePrompt = customModePrompts?.[mode] as PromptComponent
-		const effectiveInstructions = [globalInstructions, modePrompt?.customInstructions].filter(Boolean).join("\n\n")
 
 		const cline = new Task({
 			provider: this,
 			apiConfiguration,
-			customInstructions: effectiveInstructions,
 			enableDiff,
 			enableCheckpoints,
 			fuzzyMatchThreshold,
@@ -966,11 +952,6 @@ export class ClineProvider extends EventEmitter<ClineProviderEvents> implements 
 	async updateCustomInstructions(instructions?: string) {
 		// User may be clearing the field.
 		await this.updateGlobalState("customInstructions", instructions || undefined)
-
-		if (this.getCurrentCline()) {
-			this.getCurrentCline()!.customInstructions = instructions || undefined
-		}
-
 		await this.postStateToWebview()
 	}
 
